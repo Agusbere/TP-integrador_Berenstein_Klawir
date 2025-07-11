@@ -33,7 +33,7 @@ export const register = async (req, res) => {
         );
         res.status(201).json({ success: true, message: 'Usuario registrado correctamente', user: result.rows[0] });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Error interno del servidor', token: '' });
+        res.status(500).json({ success: false, message: err.message, error: err, token: '' });
     }
 };
 

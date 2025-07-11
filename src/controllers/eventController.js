@@ -43,26 +43,33 @@ export const getEvents = async (req, res) => {
 export const searchEvents = async (req, res) => {
   try {
     const { name, startdate, tag } = req.query;
-    let where = [];
+    let whereStr = '';
     let params = [];
-    if (name) {
-      where.push(`LOWER(events.name) LIKE LOWER($${params.length + 1})`);
-      params.push(`%${name}%`);
+    let paramIndex = 1;
+
+    if (name && startdate && tag) {
+      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.start_date >= $2 AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($3))`;
+      params = [`%${name}%`, startdate, tag];
+    } else if (name && startdate) {
+      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.start_date >= $2`;
+      params = [`%${name}%`, startdate];
+    } else if (name && tag) {
+      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($2))`;
+      params = [`%${name}%`, tag];
+    } else if (startdate && tag) {
+      whereStr = `WHERE events.start_date >= $1 AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($2))`;
+      params = [startdate, tag];
+    } else if (name) {
+      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1)`;
+      params = [`%${name}%`];
+    } else if (startdate) {
+      whereStr = `WHERE events.start_date >= $1`;
+      params = [startdate];
+    } else if (tag) {
+      whereStr = `WHERE events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($1))`;
+      params = [tag];
     }
-    if (startdate) {
-      where.push(`events.start_date >= $${params.length + 1}`);
-      params.push(startdate);
-    }
-    if (tag) {
-      where.push(`events.id IN (
-        SELECT event_tags.id_event
-        FROM event_tags
-        INNER JOIN tags ON event_tags.id_tag = tags.id
-        WHERE LOWER(tags.name) = LOWER($${params.length + 1})
-      )`);
-      params.push(tag);
-    }
-    const whereStr = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
     const result = await pool.query(`
       SELECT 
         events.*, 
@@ -191,6 +198,7 @@ export const updateEvent = async (req, res) => {
       return res.status(404).json({ message: 'Evento no encontrado o no autorizado' });
     }
     const { name, description, id_event_location, max_assistance, price, duration_in_minutes, tags } = req.body;
+    // Validaciones
     if (name && name.length < 3) {
       return res.status(400).json({ message: 'El nombre debe tener al menos 3 letras.' });
     }
@@ -212,14 +220,38 @@ export const updateEvent = async (req, res) => {
     if (duration_in_minutes && duration_in_minutes < 0) {
       return res.status(400).json({ message: 'La duración no puede ser menor que cero.' });
     }
-    const fields = Object.keys(req.body).filter(f => f !== 'tags');
-    const values = fields.map(f => req.body[f]);
-    if (fields.length > 0) {
-      let setStr = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
-      await pool.query(
-        `UPDATE events SET ${setStr} WHERE id = $${fields.length + 1}`,
-        [...values, id]
-      );
+    // Armado explícito del UPDATE
+    let updateFields = [];
+    let updateParams = [];
+    let paramIdx = 1;
+    if (name) {
+      updateFields.push(`name = $${paramIdx++}`);
+      updateParams.push(name);
+    }
+    if (description) {
+      updateFields.push(`description = $${paramIdx++}`);
+      updateParams.push(description);
+    }
+    if (id_event_location) {
+      updateFields.push(`id_event_location = $${paramIdx++}`);
+      updateParams.push(id_event_location);
+    }
+    if (max_assistance) {
+      updateFields.push(`max_assistance = $${paramIdx++}`);
+      updateParams.push(max_assistance);
+    }
+    if (price) {
+      updateFields.push(`price = $${paramIdx++}`);
+      updateParams.push(price);
+    }
+    if (duration_in_minutes) {
+      updateFields.push(`duration_in_minutes = $${paramIdx++}`);
+      updateParams.push(duration_in_minutes);
+    }
+    if (updateFields.length > 0) {
+      const updateQuery = `UPDATE events SET ${updateFields.join(', ')} WHERE id = $${paramIdx}`;
+      updateParams.push(id);
+      await pool.query(updateQuery, updateParams);
     }
     if (tags && Array.isArray(tags)) {
       await pool.query('DELETE FROM event_tags WHERE id_event = $1', [id]);

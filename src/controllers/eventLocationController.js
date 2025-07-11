@@ -82,14 +82,38 @@ export const updateEventLocation = async (req, res) => {
     if (location.rows.length === 0) {
       return res.status(404).json({ message: 'Ubicación no encontrada o no autorizada' });
     }
-    const fields = Object.keys(req.body);
-    const values = Object.values(req.body);
-    if (fields.length > 0) {
-      let setStr = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
-      await pool.query(
-        `UPDATE event_locations SET ${setStr} WHERE id = $${fields.length + 1}`,
-        [...values, id]
-      );
+    const { id_location, name, full_address, max_capacity, latitude, longitude } = req.body;
+    let updateFields = [];
+    let updateParams = [];
+    let paramIdx = 1;
+    if (id_location) {
+      updateFields.push(`id_location = $${paramIdx++}`);
+      updateParams.push(id_location);
+    }
+    if (name) {
+      updateFields.push(`name = $${paramIdx++}`);
+      updateParams.push(name);
+    }
+    if (full_address) {
+      updateFields.push(`full_address = $${paramIdx++}`);
+      updateParams.push(full_address);
+    }
+    if (max_capacity) {
+      updateFields.push(`max_capacity = $${paramIdx++}`);
+      updateParams.push(max_capacity);
+    }
+    if (latitude) {
+      updateFields.push(`latitude = $${paramIdx++}`);
+      updateParams.push(latitude);
+    }
+    if (longitude) {
+      updateFields.push(`longitude = $${paramIdx++}`);
+      updateParams.push(longitude);
+    }
+    if (updateFields.length > 0) {
+      const updateQuery = `UPDATE event_locations SET ${updateFields.join(', ')} WHERE id = $${paramIdx}`;
+      updateParams.push(id);
+      await pool.query(updateQuery, updateParams);
     }
     res.status(200).json({ message: 'Ubicación actualizada' });
   } catch (error) {

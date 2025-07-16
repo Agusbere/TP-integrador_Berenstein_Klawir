@@ -5,6 +5,7 @@ import 'dotenv/config';
 import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import eventLocationRoutes from './routes/eventLocationRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 const port = 3000;
@@ -12,6 +13,8 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
+
+app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/event-location', eventLocationRoutes);

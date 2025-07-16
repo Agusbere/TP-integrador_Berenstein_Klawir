@@ -1,18 +1,18 @@
 import express from 'express';
-import * as eventController from '../controllers/eventController.js';
+import { getEvents, searchEvents, getEventById, createEvent, updateEvent, deleteEvent, enrollEvent, unenrollEvent } from '../controllers/eventController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/', eventController.getEvents);
-router.get('/search', eventController.searchEvents);
-router.get('/:id', eventController.getEventById);
+router.get('/', getEvents);
+router.get('/search', searchEvents);
+router.get('/:id', getEventById);
 
-router.post('/', authMiddleware, eventController.createEvent);
-router.put('/:id', authMiddleware, eventController.updateEvent);
-router.delete('/:id', authMiddleware, eventController.deleteEvent);
+router.post('/', authMiddleware, createEvent);
+router.put('/:id', authMiddleware, updateEvent);
+router.delete('/:id', authMiddleware, deleteEvent);
 
-router.post('/:id/enrollment', authMiddleware, eventController.enrollEvent);
-router.delete('/:id/enrollment', authMiddleware, eventController.unenrollEvent);
+router.post('/:id/enrollment', authMiddleware, enrollEvent);
+router.delete('/:id/enrollment', authMiddleware, unenrollEvent);
 
 export default router;

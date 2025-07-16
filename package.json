@@ -2,6 +2,7 @@
   "name": "tp-integrador_berenstein_klawir",
   "version": "1.0.0",
   "description": "\"# TP-integrador_Berenstein_Klawir\"",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "nodemon ./src/index.js",
@@ -15,6 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.10",
     "pg": "^8.16.3"

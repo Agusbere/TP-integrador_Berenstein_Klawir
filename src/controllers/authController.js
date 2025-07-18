@@ -1,6 +1,5 @@
 import pool from '../database/connection.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = '@TPintegrador_10';
 
@@ -25,10 +24,9 @@ export const register = async (req, res) => {
         if (existing.rows.length > 0) {
             return res.status(400).json({ success: false, message: 'El usuario ya está registrado.', token: '' });
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
         const result = await pool.query(
             `INSERT INTO users (first_name, last_name, username, password) VALUES ($1, $2, $3, $4) RETURNING id, first_name, last_name, username`,
-            [first_name, last_name, username, hashedPassword]
+            [first_name, last_name, username, password]
         );
         const user = result.rows[0];
         const token = jwt.sign(
@@ -57,8 +55,7 @@ export const login = async (req, res) => {
         if (!user) {
             return res.status(401).json({ success: false, message: 'Usuario o clave inválida.', token: '' });
         }
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
+        if (password !== user.password) {
             return res.status(401).json({ success: false, message: 'Usuario o clave inválida.', token: '' });
         }
         const token = jwt.sign(

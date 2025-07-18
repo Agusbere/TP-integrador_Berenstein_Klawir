@@ -35,7 +35,7 @@ export const getEvents = async (req, res) => {
     `, [limit, offset]);
     res.status(200).json(result.rows);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener eventos', error });
+    res.status(500).json({ message: 'Error al obtener eventos', error: error.message, stack: error.stack });
   }
 };
 

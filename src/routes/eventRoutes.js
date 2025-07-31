@@ -1,10 +1,11 @@
 import express from 'express';
-import { getEvents, searchEvents, getEventById, createEvent, updateEvent, deleteEvent, enrollEvent, unenrollEvent } from '../controllers/eventController.js';
+import { getEvents, searchEvents, getEventById, createEvent, updateEvent, deleteEvent, enrollEvent, unenrollEvent, getEventCategories } from '../controllers/eventController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 router.get('/', getEvents);
+router.get('/categories', getEventCategories);
 router.get('/search', searchEvents);
 router.get('/:id', getEventById);
 

@@ -22,7 +22,6 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// Actualizar usuario (ejemplo de endpoint CRUD explícito)
 export const updateUser = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -54,7 +53,6 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// Eliminar usuario (ejemplo de endpoint CRUD explícito)
 export const deleteUser = async (req, res) => {
   try {
     const userId = req.user.id;

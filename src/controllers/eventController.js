@@ -1,6 +1,18 @@
 import pool from '../database/connection.js';
 
-// Listar eventos paginados
+export const getEventCategories = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name, display_order 
+      FROM event_categories 
+      ORDER BY display_order ASC, name ASC
+    `);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener categorías de eventos', error: error.message });
+  }
+};
+
 export const getEvents = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
@@ -24,12 +36,16 @@ export const getEvents = async (req, res) => {
         users.id AS creator_user_id,
         users.first_name AS creator_first_name,
         users.last_name AS creator_last_name,
-        users.username AS creator_username
+        users.username AS creator_username,
+        event_categories.id AS event_category_id,
+        event_categories.name AS event_category_name,
+        event_categories.display_order AS event_category_display_order
       FROM events
       INNER JOIN event_locations ON events.id_event_location = event_locations.id
       INNER JOIN locations ON event_locations.id_location = locations.id
       INNER JOIN provinces ON locations.id_province = provinces.id
       INNER JOIN users ON events.id_creator_user = users.id
+      INNER JOIN event_categories ON events.id_event_category = event_categories.id
       ORDER BY events.id
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
@@ -39,36 +55,32 @@ export const getEvents = async (req, res) => {
   }
 };
 
-// Búsqueda de eventos por nombre, fecha o tag
 export const searchEvents = async (req, res) => {
   try {
     const { name, startdate, tag } = req.query;
-    let whereStr = '';
+    let whereConditions = [];
     let params = [];
     let paramIndex = 1;
 
-    if (name && startdate && tag) {
-      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.start_date >= $2 AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($3))`;
-      params = [`%${name}%`, startdate, tag];
-    } else if (name && startdate) {
-      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.start_date >= $2`;
-      params = [`%${name}%`, startdate];
-    } else if (name && tag) {
-      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1) AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($2))`;
-      params = [`%${name}%`, tag];
-    } else if (startdate && tag) {
-      whereStr = `WHERE events.start_date >= $1 AND events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($2))`;
-      params = [startdate, tag];
-    } else if (name) {
-      whereStr = `WHERE LOWER(events.name) LIKE LOWER($1)`;
-      params = [`%${name}%`];
-    } else if (startdate) {
-      whereStr = `WHERE events.start_date >= $1`;
-      params = [startdate];
-    } else if (tag) {
-      whereStr = `WHERE events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($1))`;
-      params = [tag];
+    if (name) {
+      whereConditions.push(`LOWER(events.name) LIKE LOWER($${paramIndex})`);
+      params.push(`%${name}%`);
+      paramIndex++;
     }
+
+    if (startdate) {
+      whereConditions.push(`events.start_date >= $${paramIndex}`);
+      params.push(startdate);
+      paramIndex++;
+    }
+
+    if (tag) {
+      whereConditions.push(`events.id IN (SELECT event_tags.id_event FROM event_tags INNER JOIN tags ON event_tags.id_tag = tags.id WHERE LOWER(tags.name) = LOWER($${paramIndex}))`);
+      params.push(tag);
+      paramIndex++;
+    }
+
+    const whereStr = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const result = await pool.query(`
       SELECT 
@@ -89,12 +101,16 @@ export const searchEvents = async (req, res) => {
         users.id AS creator_user_id,
         users.first_name AS creator_first_name,
         users.last_name AS creator_last_name,
-        users.username AS creator_username
+        users.username AS creator_username,
+        event_categories.id AS event_category_id,
+        event_categories.name AS event_category_name,
+        event_categories.display_order AS event_category_display_order
       FROM events
       INNER JOIN event_locations ON events.id_event_location = event_locations.id
       INNER JOIN locations ON event_locations.id_location = locations.id
       INNER JOIN provinces ON locations.id_province = provinces.id
       INNER JOIN users ON events.id_creator_user = users.id
+      INNER JOIN event_categories ON events.id_event_category = event_categories.id
       ${whereStr}
       ORDER BY events.id
     `, params);
@@ -104,10 +120,16 @@ export const searchEvents = async (req, res) => {
   }
 };
 
-// Detalle de un evento
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    console.log('Buscando evento con ID:', id);
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de evento inválido' });
+    }
+
     const result = await pool.query(`
       SELECT 
         events.*, 
@@ -127,18 +149,24 @@ export const getEventById = async (req, res) => {
         users.id AS creator_user_id,
         users.first_name AS creator_first_name,
         users.last_name AS creator_last_name,
-        users.username AS creator_username
+        users.username AS creator_username,
+        event_categories.id AS event_category_id,
+        event_categories.name AS event_category_name,
+        event_categories.display_order AS event_category_display_order
       FROM events
-      INNER JOIN event_locations ON events.id_event_location = event_locations.id
-      INNER JOIN locations ON event_locations.id_location = locations.id
-      INNER JOIN provinces ON locations.id_province = provinces.id
-      INNER JOIN users ON events.id_creator_user = users.id
+      LEFT JOIN event_locations ON events.id_event_location = event_locations.id
+      LEFT JOIN locations ON event_locations.id_location = locations.id
+      LEFT JOIN provinces ON locations.id_province = provinces.id
+      LEFT JOIN users ON events.id_creator_user = users.id
+      LEFT JOIN event_categories ON events.id_event_category = event_categories.id
       WHERE events.id = $1
-    `, [id]);
+    `, [parseInt(id)]);
+    
+    console.log('Resultado de la consulta:', result.rows.length, 'filas');
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
-    // Traer tags aparte
     const tagsResult = await pool.query(`
       SELECT tags.id, tags.name
       FROM event_tags
@@ -149,18 +177,26 @@ export const getEventById = async (req, res) => {
     event.tags = tagsResult.rows;
     res.status(200).json(event);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener el evento', error });
+    console.error('Error en getEventById:', error);
+    res.status(500).json({ message: 'Error al obtener el evento', error: error.message });
   }
 };
 
-// Crear evento (requiere autenticación)
 export const createEvent = async (req, res) => {
   try {
-    const { name, description, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, tags } = req.body;
+    const { name, description, id_event_category, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, tags } = req.body;
     const id_creator_user = req.user.id;
     if (!name || name.length < 3 || !description || description.length < 3) {
       return res.status(400).json({ message: 'El nombre o descripción están vacíos o tienen menos de tres (3) letras.' });
     }
+    
+    if (id_event_category) {
+      const category = await pool.query('SELECT id FROM event_categories WHERE id = $1', [id_event_category]);
+      if (category.rows.length === 0) {
+        return res.status(400).json({ message: 'Categoría de evento inexistente.' });
+      }
+    }
+    
     const loc = await pool.query('SELECT max_capacity FROM event_locations WHERE id = $1', [id_event_location]);
     if (loc.rows.length === 0) {
       return res.status(400).json({ message: 'Ubicación de evento inexistente.' });
@@ -172,9 +208,9 @@ export const createEvent = async (req, res) => {
       return res.status(400).json({ message: 'El precio o duración no pueden ser menores que cero.' });
     }
     const result = await pool.query(
-      `INSERT INTO events (name, description, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, id_creator_user)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [name, description, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, id_creator_user]
+      `INSERT INTO events (name, description, id_event_category, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, id_creator_user)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [name, description, id_event_category, id_event_location, start_date, duration_in_minutes, price, enabled_for_enrollment, max_assistance, id_creator_user]
     );
     const event = result.rows[0];
     if (tags && Array.isArray(tags)) {
@@ -188,7 +224,6 @@ export const createEvent = async (req, res) => {
   }
 };
 
-// Editar evento (requiere autenticación y ser creador)
 export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -197,14 +232,21 @@ export const updateEvent = async (req, res) => {
     if (event.rows.length === 0) {
       return res.status(404).json({ message: 'Evento no encontrado o no autorizado' });
     }
-    const { name, description, id_event_location, max_assistance, price, duration_in_minutes, tags } = req.body;
-    // Validaciones
+    const { name, description, id_event_category, id_event_location, max_assistance, price, duration_in_minutes, tags } = req.body;
     if (name && name.length < 3) {
       return res.status(400).json({ message: 'El nombre debe tener al menos 3 letras.' });
     }
     if (description && description.length < 3) {
       return res.status(400).json({ message: 'La descripción debe tener al menos 3 letras.' });
     }
+    
+    if (id_event_category) {
+      const category = await pool.query('SELECT id FROM event_categories WHERE id = $1', [id_event_category]);
+      if (category.rows.length === 0) {
+        return res.status(400).json({ message: 'Categoría de evento inexistente.' });
+      }
+    }
+    
     if (id_event_location) {
       const loc = await pool.query('SELECT max_capacity FROM event_locations WHERE id = $1', [id_event_location]);
       if (loc.rows.length === 0) {
@@ -220,7 +262,6 @@ export const updateEvent = async (req, res) => {
     if (duration_in_minutes && duration_in_minutes < 0) {
       return res.status(400).json({ message: 'La duración no puede ser menor que cero.' });
     }
-    // Armado explícito del UPDATE
     let updateFields = [];
     let updateParams = [];
     let paramIdx = 1;
@@ -231,6 +272,10 @@ export const updateEvent = async (req, res) => {
     if (description) {
       updateFields.push(`description = $${paramIdx++}`);
       updateParams.push(description);
+    }
+    if (id_event_category) {
+      updateFields.push(`id_event_category = $${paramIdx++}`);
+      updateParams.push(id_event_category);
     }
     if (id_event_location) {
       updateFields.push(`id_event_location = $${paramIdx++}`);
@@ -265,7 +310,6 @@ export const updateEvent = async (req, res) => {
   }
 };
 
-// Eliminar evento (requiere autenticación y ser creador)
 export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -281,7 +325,6 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
-// Inscripción a evento
 export const enrollEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -312,7 +355,6 @@ export const enrollEvent = async (req, res) => {
   }
 };
 
-// Desinscripción de evento
 export const unenrollEvent = async (req, res) => {
   try {
     const { id } = req.params;

@@ -5,7 +5,7 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 const router = express.Router();
 
 router.get('/', getEvents);
-router.get('/all', getAllEventsWithoutLimit);
+router.get('/all', authMiddleware, getAllEventsWithoutLimit);
 router.get('/my-events', authMiddleware, getEventsByUser);
 router.get('/categories', getEventCategories);
 router.get('/search', searchEvents);

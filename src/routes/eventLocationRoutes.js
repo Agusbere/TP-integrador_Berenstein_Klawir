@@ -1,10 +1,11 @@
 import express from 'express';
-import { getAllEventLocations, getEventLocationById, createEventLocation, updateEventLocation, deleteEventLocation } from '../controllers/eventLocationController.js';
+import { getAllEventLocations, getAllEventLocationsWithoutLimit, getEventLocationById, createEventLocation, updateEventLocation, deleteEventLocation } from '../controllers/eventLocationController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 router.get('/', authMiddleware, getAllEventLocations);
+router.get('/all', authMiddleware, getAllEventLocationsWithoutLimit);
 router.get('/:id', authMiddleware, getEventLocationById);
 router.post('/', authMiddleware, createEventLocation);
 router.put('/:id', authMiddleware, updateEventLocation);

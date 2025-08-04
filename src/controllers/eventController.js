@@ -376,3 +376,83 @@ export const unenrollEvent = async (req, res) => {
     res.status(500).json({ message: 'Error al desinscribirse', error });
   }
 };
+
+export const getEventsByUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(`
+      SELECT 
+        events.*, 
+        event_locations.id AS event_location_id,
+        event_locations.name AS event_location_name,
+        event_locations.full_address,
+        event_locations.max_capacity,
+        event_locations.latitude AS event_location_latitude,
+        event_locations.longitude AS event_location_longitude,
+        locations.id AS location_id,
+        locations.name AS location_name,
+        locations.id_province,
+        locations.latitude AS location_latitude,
+        locations.longitude AS location_longitude,
+        provinces.id AS province_id,
+        provinces.name AS province_name,
+        users.id AS creator_user_id,
+        users.first_name AS creator_first_name,
+        users.last_name AS creator_last_name,
+        users.username AS creator_username,
+        event_categories.id AS event_category_id,
+        event_categories.name AS event_category_name,
+        event_categories.display_order AS event_category_display_order
+      FROM events
+      INNER JOIN event_locations ON events.id_event_location = event_locations.id
+      INNER JOIN locations ON event_locations.id_location = locations.id
+      INNER JOIN provinces ON locations.id_province = provinces.id
+      INNER JOIN users ON events.id_creator_user = users.id
+      INNER JOIN event_categories ON events.id_event_category = event_categories.id
+      WHERE events.id_creator_user = $1
+      ORDER BY events.start_date DESC
+    `, [userId]);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener eventos del usuario', error: error.message });
+  }
+};
+
+export const getAllEventsWithoutLimit = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        events.*, 
+        event_locations.id AS event_location_id,
+        event_locations.name AS event_location_name,
+        event_locations.full_address,
+        event_locations.max_capacity,
+        event_locations.latitude AS event_location_latitude,
+        event_locations.longitude AS event_location_longitude,
+        locations.id AS location_id,
+        locations.name AS location_name,
+        locations.id_province,
+        locations.latitude AS location_latitude,
+        locations.longitude AS location_longitude,
+        provinces.id AS province_id,
+        provinces.name AS province_name,
+        users.id AS creator_user_id,
+        users.first_name AS creator_first_name,
+        users.last_name AS creator_last_name,
+        users.username AS creator_username,
+        event_categories.id AS event_category_id,
+        event_categories.name AS event_category_name,
+        event_categories.display_order AS event_category_display_order
+      FROM events
+      INNER JOIN event_locations ON events.id_event_location = event_locations.id
+      INNER JOIN locations ON event_locations.id_location = locations.id
+      INNER JOIN provinces ON locations.id_province = provinces.id
+      INNER JOIN users ON events.id_creator_user = users.id
+      INNER JOIN event_categories ON events.id_event_category = event_categories.id
+      ORDER BY events.start_date DESC
+    `);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener todos los eventos', error: error.message });
+  }
+};

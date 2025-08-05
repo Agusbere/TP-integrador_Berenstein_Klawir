@@ -377,6 +377,17 @@ export const unenrollEvent = async (req, res) => {
   }
 };
 
+export const isUserEnrolled = async (req, res) => {
+  try {
+    const { id, userId } = req.params;
+    const result = await pool.query('SELECT 1 FROM event_enrollments WHERE id_event = $1 AND id_user = $2', [id, userId]);
+    const enrolled = result.rows.length > 0;
+    res.status(200).json({ enrolled });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al verificar inscripción', error: error.message });
+  }
+};
+
 export const getEventsByUser = async (req, res) => {
   try {
     const userId = req.user.id;

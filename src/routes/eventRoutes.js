@@ -1,5 +1,5 @@
 import express from 'express';
-import { getEvents, searchEvents, getEventById, createEvent, updateEvent, deleteEvent, enrollEvent, unenrollEvent, getEventCategories, getEventsByUser, getAllEventsWithoutLimit } from '../controllers/eventController.js';
+import { getEvents, searchEvents, getEventById, createEvent, updateEvent, deleteEvent, enrollEvent, unenrollEvent, getEventCategories, getEventsByUser, getAllEventsWithoutLimit, isUserEnrolled } from '../controllers/eventController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -10,6 +10,7 @@ router.get('/my-events', authMiddleware, getEventsByUser);
 router.get('/categories', getEventCategories);
 router.get('/search', searchEvents);
 router.get('/:id', getEventById);
+router.get('/:id/enrollment/:userId', authMiddleware, isUserEnrolled);
 
 router.post('/', authMiddleware, createEvent);
 router.put('/:id', authMiddleware, updateEvent);

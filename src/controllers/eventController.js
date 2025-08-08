@@ -124,8 +124,6 @@ export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('Buscando evento con ID:', id);
-    
     if (!id || isNaN(parseInt(id))) {
       return res.status(400).json({ message: 'ID de evento inválido' });
     }
@@ -161,8 +159,6 @@ export const getEventById = async (req, res) => {
       LEFT JOIN event_categories ON events.id_event_category = event_categories.id
       WHERE events.id = $1
     `, [parseInt(id)]);
-    
-    console.log('Resultado de la consulta:', result.rows.length, 'filas');
     
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Evento no encontrado' });
